@@ -2149,7 +2149,7 @@ This guide was created for:
 
 ---
 
-**Need help?** Feel free to ask questions or open issues on the llama.cpp GitHub repository!
+**Need help?** Feel free to ask questions or open issues on the llama.cpp GitHub official repository!
 
 **Found this helpful?** Star the repository and share with others!
 
