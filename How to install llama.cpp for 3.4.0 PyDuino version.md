@@ -9,22 +9,156 @@ python extract_llama.cpp_master_7z.py
 ------------------
 -------------------
 
-
 # Complete Guide: Building llama.cpp on Windows with Visual Studio 2022
 
 ## Table of Contents
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
 - [Understanding Your Hardware](#understanding-your-hardware)
+- [Quick Build Reference](#quick-build-reference)
 - [Installation Methods](#installation-methods)
   - [Method 1: CPU-Only Build](#method-1-cpu-only-build)
   - [Method 2: CUDA (NVIDIA GPU) Build](#method-2-cuda-nvidia-gpu-build)
   - [Method 3: Vulkan (Cross-Platform GPU) Build](#method-3-vulkan-cross-platform-gpu-build)
   - [Method 4: OpenBLAS (CPU Optimization) Build](#method-4-openblas-cpu-optimization-build)
+- [Advanced: Combining Multiple Backends](#advanced-combining-multiple-backends)
 - [Verification and Testing](#verification-and-testing)
 - [Troubleshooting](#troubleshooting)
 - [Performance Optimization](#performance-optimization)
 - [Additional Resources](#additional-resources)
+
+---
+
+## Quick Build Reference
+
+**Choose your build configuration based on your hardware:**
+
+### All Possible CMake Build Combinations
+
+| # | Configuration | CMake Command | When to Use |
+|---|--------------|---------------|-------------|
+| **1** | **CPU Only** | `cmake .. -G "Visual Studio 17 2022" -A x64` | Testing, no GPU, or simplest build |
+| **2** | **OpenBLAS Only** | `cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake` | CPU-only system with optimization |
+| **3** | **CUDA Only** | `cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_CUDA=ON` | NVIDIA GPU with enough VRAM |
+| **4** | **Vulkan Only** | `cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_VULKAN=ON` | AMD/Intel GPU without CPU optimization |
+| **5** | **CUDA + OpenBLAS** | `cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_CUDA=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake` | NVIDIA GPU + optimized CPU fallback |
+| **6** | **Vulkan + OpenBLAS** | `cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_VULKAN=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake` | AMD/Intel GPU + optimized CPU fallback |
+| **7** | **CUDA + Vulkan + OpenBLAS** | `cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_CUDA=ON -DGGML_VULKAN=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake` | Multiple GPUs or maximum flexibility |
+
+### Quick Selection Guide
+
+**🎮 Gaming/Personal PC:**
+- NVIDIA GPU (8-16GB VRAM): **Configuration #5** (CUDA + OpenBLAS)
+- AMD GPU: **Configuration #6** (Vulkan + OpenBLAS)
+- Intel Arc: **Configuration #6** (Vulkan + OpenBLAS)
+- No GPU: **Configuration #2** (OpenBLAS Only)
+
+**🖥️ Workstation/Server:**
+- High-end NVIDIA (24GB+): **Configuration #3** (CUDA Only)
+- CPU-only server: **Configuration #2** (OpenBLAS Only)
+- Mixed GPUs: **Configuration #7** (All three)
+
+**💻 Laptop:**
+- NVIDIA GPU: **Configuration #5** (CUDA + OpenBLAS)
+- AMD/Intel GPU: **Configuration #6** (Vulkan + OpenBLAS)
+- Integrated only: **Configuration #2** (OpenBLAS Only)
+
+**🔬 Development/Testing:**
+- **Configuration #7** (All three backends for flexibility)
+
+### Prerequisites by Configuration
+
+| What You Need | Config #1 | Config #2 | Config #3 | Config #4 | Config #5 | Config #6 | Config #7 |
+|---------------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
+| Visual Studio 2022 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Git | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CMake | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| vcpkg | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| OpenBLAS (via vcpkg) | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| CUDA Toolkit | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| Vulkan SDK | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ |
+
+### Copy-Paste Build Commands
+
+**For NVIDIA GPU users (CUDA + OpenBLAS) - Most Common:**
+
+```cmd
+# Install OpenBLAS
+cd C:\
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+bootstrap-vcpkg.bat
+vcpkg install openblas:x64-windows
+vcpkg integrate install
+
+# Build llama.cpp
+cd C:\LLaMa\llama.cpp
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_CUDA=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release
+copy C:\vcpkg\installed\x64-windows\bin\openblas.dll bin\Release\
+```
+
+**For AMD/Intel GPU users (Vulkan + OpenBLAS):**
+
+```cmd
+# Install OpenBLAS
+cd C:\
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+bootstrap-vcpkg.bat
+vcpkg install openblas:x64-windows
+vcpkg integrate install
+
+# Build llama.cpp
+cd C:\LLaMa\llama.cpp
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_VULKAN=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release
+copy C:\vcpkg\installed\x64-windows\bin\openblas.dll bin\Release\
+```
+
+**For ALL backends (Advanced - Maximum Flexibility):**
+
+```cmd
+# Install OpenBLAS
+cd C:\
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+bootstrap-vcpkg.bat
+vcpkg install openblas:x64-windows
+vcpkg integrate install
+
+# Build llama.cpp with all backends
+cd C:\LLaMa\llama.cpp
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_CUDA=ON -DGGML_VULKAN=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release
+copy C:\vcpkg\installed\x64-windows\bin\openblas.dll bin\Release\
+```
+
+**For CPU-only systems (OpenBLAS optimization):**
+
+```cmd
+# Install OpenBLAS
+cd C:\
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+bootstrap-vcpkg.bat
+vcpkg install openblas:x64-windows
+vcpkg integrate install
+
+# Build llama.cpp
+cd C:\LLaMa\llama.cpp
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release
+copy C:\vcpkg\installed\x64-windows\bin\openblas.dll bin\Release\
+```
 
 ---
 
@@ -1107,6 +1241,295 @@ llama-cli.exe -m llama-34b.gguf -ngl 35 -p "test"
 # Overflow layers use OpenBLAS on CPU
 # Best possible performance for AMD users
 ```
+
+### All Three Backends: CUDA + Vulkan + OpenBLAS (Advanced)
+
+**Best for:** Systems with multiple GPUs or users who want maximum flexibility
+
+**When you might need this:**
+1. You have NVIDIA GPU + AMD GPU in the same system
+2. You want to test performance across different backends
+3. You develop multi-platform applications
+4. You want runtime choice between CUDA and Vulkan
+
+**Build command:**
+```cmd
+cmake .. -G "Visual Studio 17 2022" -A x64 ^
+    -DGGML_CUDA=ON ^
+    -DGGML_VULKAN=ON ^
+    -DGGML_BLAS=ON ^
+    -DGGML_BLAS_VENDOR=OpenBLAS ^
+    -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+```
+
+**What this enables:**
+- ✅ CUDA support (NVIDIA GPUs)
+- ✅ Vulkan support (AMD/Intel/NVIDIA GPUs)
+- ✅ OpenBLAS CPU optimization
+- ✅ Runtime selection of GPU backend
+
+**Prerequisites needed:**
+```cmd
+# Must have all three installed:
+# 1. CUDA Toolkit (for NVIDIA)
+nvcc --version
+
+# 2. Vulkan SDK (for Vulkan)
+vulkaninfo --summary
+
+# 3. OpenBLAS (via vcpkg)
+vcpkg list | findstr openblas
+```
+
+**Step-by-step build process:**
+
+**Step 1: Install all dependencies**
+```cmd
+# Install OpenBLAS
+cd C:\vcpkg
+vcpkg install openblas:x64-windows
+vcpkg integrate install
+
+# Verify CUDA
+nvcc --version
+
+# Verify Vulkan
+vulkaninfo --summary
+```
+
+**Step 2: Clean previous builds**
+```cmd
+cd C:\LLaMa\llama.cpp
+rmdir /s /q build
+mkdir build
+cd build
+```
+
+**Step 3: Configure with all backends**
+```cmd
+cmake .. -G "Visual Studio 17 2022" -A x64 ^
+    -DGGML_CUDA=ON ^
+    -DGGML_VULKAN=ON ^
+    -DGGML_BLAS=ON ^
+    -DGGML_BLAS_VENDOR=OpenBLAS ^
+    -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+```
+
+**Expected CMake output:**
+```
+-- Found CUDA: C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.x
+-- GGML CUDA sources found, configuring CUDA options
+-- Found Vulkan: C:/VulkanSDK/x.x.xxx.x/Lib/vulkan-1.lib
+-- GGML Vulkan support enabled
+-- Found OpenBLAS: C:/vcpkg/installed/x64-windows/lib/openblas.lib
+-- GGML BLAS enabled with OpenBLAS
+...
+-- Configuring done
+-- Generating done
+```
+
+**Step 4: Build**
+```cmd
+cmake --build . --config Release
+```
+
+**Build time:** 10-20 minutes (all backends compile)
+
+**Step 5: Copy required DLLs**
+```cmd
+copy C:\vcpkg\installed\x64-windows\bin\openblas.dll bin\Release\
+```
+
+**Step 6: Verify all backends are available**
+```cmd
+bin\Release\llama-cli.exe --version
+```
+
+### How Runtime Backend Selection Works
+
+When you build with multiple GPU backends (CUDA + Vulkan), llama.cpp will:
+
+**Default behavior:**
+1. **Prefers CUDA** if available (faster on NVIDIA)
+2. Falls back to Vulkan if CUDA unavailable
+3. Falls back to OpenBLAS (CPU) for remaining layers
+
+**Force specific backend:**
+
+**Use CUDA (NVIDIA GPU):**
+```cmd
+# Explicitly use CUDA
+set GGML_CUDA=1
+bin\Release\llama-cli.exe -m model.gguf -ngl 99 -p "test"
+```
+
+**Use Vulkan (any compatible GPU):**
+```cmd
+# Disable CUDA, use Vulkan
+set GGML_CUDA=0
+set GGML_VULKAN_DEVICE=0
+bin\Release\llama-cli.exe -m model.gguf -ngl 99 -p "test"
+```
+
+**Use OpenBLAS only (CPU):**
+```cmd
+# Disable both GPUs
+set GGML_CUDA=0
+bin\Release\llama-cli.exe -m model.gguf -ngl 0 -p "test"
+```
+
+### Multi-GPU Scenario Example
+
+**System configuration:**
+- GPU 0: NVIDIA RTX 3060 (12GB VRAM)
+- GPU 1: AMD RX 6800 (16GB VRAM)
+- CPU: Ryzen 9 5900X (12 cores)
+- RAM: 64GB
+
+**Use case 1: Run model on NVIDIA GPU**
+```cmd
+set CUDA_VISIBLE_DEVICES=0
+set GGML_CUDA=1
+bin\Release\llama-cli.exe -m llama-13b.gguf -ngl 99 -p "test"
+
+# Uses: NVIDIA RTX 3060 via CUDA
+# Fallback: OpenBLAS if needed
+```
+
+**Use case 2: Run model on AMD GPU**
+```cmd
+set GGML_CUDA=0
+set GGML_VULKAN_DEVICE=1
+bin\Release\llama-cli.exe -m llama-13b.gguf -ngl 99 -p "test"
+
+# Uses: AMD RX 6800 via Vulkan
+# Fallback: OpenBLAS if needed
+```
+
+**Use case 3: Split across both GPUs (experimental)**
+```cmd
+# This is complex and not officially supported
+# Better to run separate instances
+```
+
+### Testing All Backends
+
+**Create a test script** `test_all_backends.bat`:
+
+```batch
+@echo off
+echo ========================================
+echo Testing CPU (OpenBLAS) Performance
+echo ========================================
+bin\Release\llama-cli.exe -m models\tinyllama.gguf -p "Hello" -n 50 -ngl 0
+echo.
+
+echo ========================================
+echo Testing CUDA Performance
+echo ========================================
+set GGML_CUDA=1
+bin\Release\llama-cli.exe -m models\tinyllama.gguf -p "Hello" -n 50 -ngl 99
+echo.
+
+echo ========================================
+echo Testing Vulkan Performance
+echo ========================================
+set GGML_CUDA=0
+set GGML_VULKAN_DEVICE=0
+bin\Release\llama-cli.exe -m models\tinyllama.gguf -p "Hello" -n 50 -ngl 99
+echo.
+
+echo ========================================
+echo Testing Mixed CUDA + OpenBLAS
+echo ========================================
+set GGML_CUDA=1
+bin\Release\llama-cli.exe -m models\tinyllama.gguf -p "Hello" -n 50 -ngl 15
+echo.
+
+pause
+```
+
+Run:
+```cmd
+test_all_backends.bat
+```
+
+### Benchmark All Backends
+
+```cmd
+# CPU only (OpenBLAS)
+bin\Release\llama-bench.exe -m models\model.gguf -ngl 0
+
+# CUDA
+set GGML_CUDA=1
+bin\Release\llama-bench.exe -m models\model.gguf -ngl 99
+
+# Vulkan  
+set GGML_CUDA=0
+bin\Release\llama-bench.exe -m models\model.gguf -ngl 99
+```
+
+### Common Issues with Multiple Backends
+
+**Issue 1: "Both CUDA and Vulkan detected, using CUDA"**
+
+This is normal! CUDA takes priority.
+
+**To force Vulkan:**
+```cmd
+set GGML_CUDA=0
+```
+
+**Issue 2: DLL errors**
+
+**Solution:**
+```cmd
+# Ensure OpenBLAS DLL is in path
+copy C:\vcpkg\installed\x64-windows\bin\openblas.dll bin\Release\
+
+# Or add to PATH
+set PATH=%PATH%;C:\vcpkg\installed\x64-windows\bin
+```
+
+**Issue 3: Conflicting GPU backends**
+
+**Solution:** Use environment variables to control which backend is active:
+```cmd
+# CUDA only
+set GGML_CUDA=1
+set GGML_VULKAN=0
+
+# Vulkan only
+set GGML_CUDA=0
+set GGML_VULKAN=1
+```
+
+### When to Build All Three Backends
+
+**✅ Build all three if:**
+- You have multiple different GPUs
+- You develop multi-platform applications
+- You want to benchmark different backends
+- You need maximum flexibility
+- You're testing/researching performance
+
+**❌ Don't build all three if:**
+- You only have one GPU (just use its native backend)
+- You want the simplest build
+- You're deploying to production (pick one backend)
+- Build time is important (all three takes longer)
+
+### Recommended Combinations by Scenario
+
+| Your System | Recommended Build | Why |
+|-------------|------------------|-----|
+| **Single NVIDIA GPU** | CUDA + OpenBLAS | Native performance + CPU fallback |
+| **Single AMD GPU** | Vulkan + OpenBLAS | Only GPU option + CPU fallback |
+| **Single Intel GPU** | Vulkan + OpenBLAS | Only GPU option + CPU fallback |
+| **NVIDIA + AMD GPU** | CUDA + Vulkan + OpenBLAS | Use both GPUs + CPU fallback |
+| **Multiple NVIDIA GPUs** | CUDA + OpenBLAS | Single backend, multi-GPU via CUDA |
+| **Development/Testing** | All three | Maximum flexibility for testing |
+| **CPU-only system** | OpenBLAS only | No GPU, optimized CPU |
 
 ### Why Combine? Real-World Example
 
@@ -2760,7 +3183,7 @@ This guide was created for:
 
 ---
 
-**Need help?** Feel free to ask questions or open issues on the llama.cpp GitHub official repository!
+**Need help?** Feel free to ask questions or open issues on the llama.cpp GitHub repository!
 
 **Found this helpful?** Star the repository and share with others!
 
