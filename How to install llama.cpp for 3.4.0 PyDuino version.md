@@ -3183,7 +3183,15 @@ This guide was created for:
 
 ---
 
-**Need help?** Feel free to ask questions or open issues on the llama.cpp GitHub repository!
+**Need help?** Feel free to ask questions or open issues on the llama.cpp GitHub official repository!
+
+-------------
+
+# DISCLAIMER
+
+## NOTE: THIS REPOSITORY ONLY SHOWS HOW TO BUILD LLAMA.CPP FOR PYDUINO IDE PURPOSES AND IS NOT THE OFFICIAL LLAMA.CPP REPOSITORY AND DOESNT CLAIM TO BE THE OWNER OF LLAMA.CPP
+
+----------------------
 
 **Found this helpful?** Star the repository and share with others!
 
